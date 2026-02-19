@@ -116,22 +116,13 @@ chmod +x deploy.sh
 sudo ./deploy.sh
 ```
 
-See [DEPLOYMENT_STEPS.md](DEPLOYMENT_STEPS.md) for details.
-
-## Tech Stack
-
-- FastAPI backend with BeautifulSoup4 for HTML parsing
-- Tailwind CSS frontend
-- Docker + Nginx + Let's Encrypt for deployment
-- Local file cache with TTL
-
 ## Contributing
 
 PRs welcome! Fork the repo, create a feature branch, add tests if applicable, and submit a PR.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT
 
 ---
 
