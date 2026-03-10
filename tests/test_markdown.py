@@ -113,3 +113,57 @@ def test_table_inside_figure() -> None:
     assert "| Model | Arc-c | Arc-e |" in markdown
     assert "| Original | 41.81 | 75.29 |" in markdown
     assert "| Prune SW | 19.80 | 39.60 |" in markdown
+
+
+def test_remove_inline_citations_citep() -> None:
+    """Test that parenthetical citations (citep) are fully removed."""
+    html = (
+        '<p>We study deceptive alignment '
+        '<cite class="ltx_cite ltx_citemacro_citep">'
+        '(Anthropic, <a class="ltx_ref" href="#bib.bib4">2024</a>; '
+        'OpenAI, <a class="ltx_ref" href="#bib.bib29">2024</a>)'
+        '</cite> in large models.</p>'
+    )
+
+    result = convert_fragment_to_markdown(html, remove_inline_citations=True)
+    assert "Anthropic" not in result
+    assert "OpenAI" not in result
+    assert "2024" not in result
+    assert "deceptive alignment" in result
+    assert "large models" in result
+
+
+def test_remove_inline_citations_citet() -> None:
+    """Test that textual citations (citet) are fully removed."""
+    html = (
+        '<p>As shown by '
+        '<cite class="ltx_cite ltx_citemacro_citet">'
+        'Treutlein et al. (<a class="ltx_ref" href="#bib.bib40">2024</a>)'
+        '</cite>, this is important.</p>'
+    )
+
+    result = convert_fragment_to_markdown(html, remove_inline_citations=True)
+    assert "Treutlein" not in result
+    assert "this is important" in result
+
+
+def test_remove_inline_citations_preserves_when_disabled() -> None:
+    """Test that citations are preserved as plain text when removal is disabled."""
+    html = (
+        '<p>We study '
+        '<cite class="ltx_cite ltx_citemacro_citep">'
+        '(Anthropic, <a class="ltx_ref" href="#bib.bib4">2024</a>)'
+        '</cite> things.</p>'
+    )
+
+    result = convert_fragment_to_markdown(html, remove_inline_citations=False)
+    assert "Anthropic" in result
+    assert "2024" in result
+
+
+def test_remove_inline_citations_ignores_non_ltx_cite() -> None:
+    """Test that plain cite tags without ltx_cite class are not removed."""
+    html = '<p>See <cite>A Book Title</cite> for details.</p>'
+
+    result = convert_fragment_to_markdown(html, remove_inline_citations=True)
+    assert "A Book Title" in result

@@ -239,6 +239,8 @@ def _serialize_inline(node: Tag | NavigableString, *, remove_inline_citations: b
         return f"^{text}" if text else ""
 
     if node.name == "cite":
+        if remove_inline_citations and "ltx_cite" in node.get("class", []):
+            return ""
         return _serialize_children_inline(node, remove_inline_citations=remove_inline_citations)
 
     if node.name == "math":
