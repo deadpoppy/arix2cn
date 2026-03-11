@@ -167,7 +167,7 @@ function setButtonLoadingState(submitButton, isLoading) {
     if (!isLoading) {
         submitButton.disabled = false;
         submitButton.innerHTML = submitButton.getAttribute('data-original-content') || 'Submit';
-        submitButton.classList.remove('bg-[#ffb14d]');
+        submitButton.classList.remove('bg-[#8B1515]');
 
         return;
     }
@@ -187,7 +187,7 @@ function setButtonLoadingState(submitButton, isLoading) {
             <span class="ml-2">Processing...</span>
         </div>
     `;
-    submitButton.classList.add('bg-[#ffb14d]');
+    submitButton.classList.add('bg-[#8B1515]');
 }
 
 // Helper function to handle successful response
