@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -13,6 +15,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 # Import logging configuration first to intercept all logging
+from arxiv2md.cache import cleanup_cache
 from arxiv2md.utils.logging_config import get_logger
 from server.routers import dynamic, index, ingest, markdown_api
 
@@ -25,8 +28,17 @@ logger = get_logger(__name__)
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Run startup/shutdown tasks for the application."""
+    logger.info("Running startup cache cleanup")
+    cleanup_cache()
+    yield
+
+
 # Initialize the FastAPI application
-app = FastAPI(docs_url=None, redoc_url=None)
+app = FastAPI(docs_url=None, redoc_url=None, lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
