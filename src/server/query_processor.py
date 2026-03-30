@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from arxiv2md.cache import evict_if_needed
 from arxiv2md.config import ARXIV2MD_CACHE_PATH
 from arxiv2md.ingestion import ingest_paper
 from arxiv2md.query_parser import parse_arxiv_input
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
 
 def _store_digest_content(query: ArxivQuery, digest_content: str) -> None:
     """Store digest content locally under the cache directory."""
+    evict_if_needed()
     cache_dir = ARXIV2MD_CACHE_PATH / str(query.id)
     cache_dir.mkdir(parents=True, exist_ok=True)
     local_txt_file = cache_dir / "digest.txt"

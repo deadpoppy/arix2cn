@@ -8,6 +8,7 @@ from pathlib import Path
 
 import httpx
 
+from arxiv2md.cache import evict_if_needed
 from arxiv2md.config import (
     ARXIV2MD_CACHE_PATH,
     ARXIV2MD_CACHE_TTL_SECONDS,
@@ -41,6 +42,7 @@ async def fetch_arxiv_html(
     # Try primary URL (arxiv.org) first
     try:
         html_text = await _fetch_with_retries(html_url)
+        evict_if_needed()
         cache_dir.mkdir(parents=True, exist_ok=True)
         html_path.write_text(html_text, encoding="utf-8")
         return html_text
@@ -49,6 +51,7 @@ async def fetch_arxiv_html(
         if ar5iv_url and "does not have an HTML version" in str(primary_error):
             try:
                 html_text = await _fetch_with_retries(ar5iv_url)
+                evict_if_needed()
                 cache_dir.mkdir(parents=True, exist_ok=True)
                 html_path.write_text(html_text, encoding="utf-8")
                 return html_text
