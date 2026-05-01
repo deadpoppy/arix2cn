@@ -386,12 +386,16 @@ def _serialize_figure(figure: Tag, *, remove_inline_citations: bool = False) -> 
         img = figure.find("img")
         src = img.get("src") if img else None
         alt = img.get("alt") if img else None
+        # Ignore placeholder alt text from arXiv HTML
+        if alt and alt.lower() in ("refer to caption", "image", "figure", ""):
+            alt = None
+
+        image_alt = caption or alt or "Figure"
 
         if caption:
-            lines.append(f"Figure: {caption}")
+            lines.append(f"**{caption}**")
         if src:
-            image_label = alt or "Image"
-            lines.append(f"{image_label}: {src}")
+            lines.append(f"![{image_alt}]({src})")
 
     return "\n".join(lines).strip()
 

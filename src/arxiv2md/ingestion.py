@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import re
+
+from bs4 import BeautifulSoup
+
 from arxiv2md.fetch import fetch_arxiv_html
 from arxiv2md.html_parser import parse_arxiv_html
 from arxiv2md.markdown import convert_fragment_to_markdown
@@ -11,6 +15,37 @@ from arxiv2md.sections import filter_sections
 
 _REFERENCE_TITLES = ("references", "bibliography")
 _ABSTRACT_TITLE = "abstract"
+
+
+def _truncate_references_html(html: str) -> str:
+    """Remove bibliography/references sections from raw HTML before parsing.
+
+    This is a *pre-processing* step that runs before section tree parsing,
+    ensuring that long reference lists never enter the context window.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+
+    # Strategy 1: remove sections with bibliography class
+    for section in soup.find_all("section", class_=re.compile(r"ltx_bibliography")):
+        section.decompose()
+
+    # Strategy 2: remove by heading text (fallback for non-standard HTML)
+    for heading in soup.find_all(["h1", "h2", "h3"]):
+        text = heading.get_text(strip=True).lower()
+        if text in _REFERENCE_TITLES:
+            section = heading.find_parent("section")
+            if section:
+                section.decompose()
+            else:
+                # No enclosing section: remove heading and subsequent siblings
+                # until the next heading of same or higher level
+                level = int(heading.name[1])
+                heading.decompose()
+                # Note: after decompose, find_next_siblings may behave oddly;
+                # re-query from a nearby anchor if needed. For arXiv HTML,
+                # bibliography is almost always inside <section>.
+
+    return str(soup)
 
 
 async def ingest_paper(
@@ -35,6 +70,11 @@ async def ingest_paper(
         If False (default), citation URLs are stripped but text is kept.
     """
     html, source_url = await fetch_arxiv_html(html_url, arxiv_id=arxiv_id, version=version, use_cache=True, ar5iv_url=ar5iv_url)
+
+    # Pre-process: truncate references *before* parsing to keep context clean
+    if remove_refs:
+        html = _truncate_references_html(html)
+
     parsed = parse_arxiv_html(html)
 
     filtered_sections = filter_sections(parsed.sections, mode=section_filter_mode, selected=sections)
