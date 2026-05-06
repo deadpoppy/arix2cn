@@ -33,7 +33,13 @@ def format_paper(
         tree_lines.append("Abstract")
     tree_lines.append(_create_sections_tree(sections))
     tree = "\n".join(tree_lines)
-    content = _render_content(abstract=abstract, sections=sections, include_toc=include_toc)
+    content = _render_content(
+        title=title,
+        authors=authors,
+        abstract=abstract,
+        sections=sections,
+        include_toc=include_toc,
+    )
 
     section_count = count_sections(sections)
     token_estimate = _format_token_count(tree + "\n" + content)
@@ -108,11 +114,17 @@ def count_sections(sections: Iterable[SectionNode]) -> int:
 
 def _render_content(
     *,
+    title: str | None,
+    authors: list[str],
     abstract: str | None,
     sections: list[SectionNode],
     include_toc: bool,
 ) -> str:
     blocks: list[str] = []
+    if title:
+        blocks.append(f"# {title}")
+    if authors:
+        blocks.append(f"Authors: {', '.join(authors)}")
     if include_toc:
         toc = _render_toc(sections)
         if toc:

@@ -88,6 +88,16 @@ def _extract_authors(soup: BeautifulSoup) -> list[str]:
         for text in _clean_author_text(node):
             if text and text not in authors:
                 authors.append(text)
+
+    # Also pull affiliation-like text (e.g. <em> inside ltx_authors) so that
+    # institutional info is preserved in the author list for downstream rendering.
+    for node in authors_container.find_all(
+        ["em", "span"], class_=re.compile(r"ltx_emph|ltx_font_italic|ltx_role_affiliation")
+    ):
+        text = node.get_text(" ", strip=True)
+        if text and text not in authors and len(text) > 2 and not _EMAIL_RE.match(text):
+            authors.append(text)
+
     return authors
 
 

@@ -3,7 +3,7 @@
 *__pycache__*
 *.egg-info
 __pycache__/
-
+.test_venv/*
 # Cache and temp files
 .arxiv2md_cache/
 *.txt
