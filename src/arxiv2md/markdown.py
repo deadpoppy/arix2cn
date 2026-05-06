@@ -122,9 +122,6 @@ def fix_tabular_tables(root: BeautifulSoup) -> None:
 
 def _resolve_image_urls(root: BeautifulSoup, base_url: str) -> None:
     """Resolve relative ``<img src>`` attributes to absolute URLs."""
-    # Ensure base_url ends with '/' so urljoin resolves relative paths correctly
-    if not base_url.endswith("/"):
-        base_url += "/"
     for img in root.find_all("img"):
         src = img.get("src")
         if src and not src.startswith(("http://", "https://", "data:")):

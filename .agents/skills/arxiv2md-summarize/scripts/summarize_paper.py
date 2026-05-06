@@ -40,7 +40,7 @@ def main() -> None:
     parser.add_argument(
         "-o",
         "--output",
-        help="Output file path (default: <arxiv_id>.md in current directory)",
+        help="Output file path (default: <arxiv_id>.md in /tmp directory)",
     )
     parser.add_argument(
         "--keep-refs",
