@@ -78,7 +78,7 @@ def main() -> None:
         safe_id = args.arxiv_id.replace("https://", "").replace("http://", "")
         safe_id = safe_id.replace("arxiv.org/abs/", "").replace("arxiv.org/html/", "")
         safe_id = safe_id.replace("/", "_")
-        output_path = Path(f"{safe_id}.md")
+        output_path = Path("/tmp") / f"{safe_id}.md"
 
     output_path.write_text(result.content, encoding="utf-8")
     print(f"Saved Markdown to: {output_path.resolve()}")

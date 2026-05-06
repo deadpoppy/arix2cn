@@ -47,22 +47,22 @@ async def fetch_arxiv_html(
 
     # Try primary URL (arxiv.org) first
     try:
-        html_text = await _fetch_with_retries(html_url)
+        html_text, final_url = await _fetch_with_retries(html_url)
         evict_if_needed()
         cache_dir.mkdir(parents=True, exist_ok=True)
         html_path.write_text(html_text, encoding="utf-8")
-        source_url_path.write_text(html_url, encoding="utf-8")
-        return html_text, html_url
+        source_url_path.write_text(final_url, encoding="utf-8")
+        return html_text, final_url
     except RuntimeError as primary_error:
         # If we got 404 and have ar5iv fallback, try it
         if ar5iv_url and "does not have an HTML version" in str(primary_error):
             try:
-                html_text = await _fetch_with_retries(ar5iv_url)
+                html_text, final_url = await _fetch_with_retries(ar5iv_url)
                 evict_if_needed()
                 cache_dir.mkdir(parents=True, exist_ok=True)
                 html_path.write_text(html_text, encoding="utf-8")
-                source_url_path.write_text(ar5iv_url, encoding="utf-8")
-                return html_text, ar5iv_url
+                source_url_path.write_text(final_url, encoding="utf-8")
+                return html_text, final_url
             except Exception:
                 # If ar5iv also fails, raise the original error
                 pass
@@ -70,7 +70,9 @@ async def fetch_arxiv_html(
         raise primary_error
 
 
-async def _fetch_with_retries(url: str) -> str:
+async def _fetch_with_retries(url: str) -> tuple[str, str]:
+    """Fetch URL with retries. Returns (html_text, final_url) where final_url is the
+    URL after following any redirects."""
     timeout = httpx.Timeout(ARXIV2MD_FETCH_TIMEOUT_S)
     headers = {"User-Agent": ARXIV2MD_USER_AGENT}
     last_exc: Exception | None = None
@@ -93,7 +95,7 @@ async def _fetch_with_retries(url: str) -> str:
             else:
                 response.raise_for_status()
                 _ensure_html_response(response)
-                return response.text
+                return response.text, str(response.url)
         except (httpx.RequestError, httpx.HTTPStatusError, RuntimeError) as exc:
             last_exc = exc
 

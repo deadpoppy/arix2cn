@@ -9,13 +9,13 @@ description: >
   "总结论文", "读论文", "arxiv总结", or any request to ingest, convert, or
   summarize an arXiv paper with figure awareness.
 ---
-
 # arxiv2md-summarize
 
 ## Workflow
 
 1. **Ingest paper**
    Run `python scripts/summarize_paper.py <arxiv_id>` from the skill directory.
+
    - The script fetches HTML from arxiv.org (with ar5iv fallback).
    - It **pre-truncates** the bibliography/references section at the raw-HTML
      level so that long citation lists never enter the context window.
@@ -24,22 +24,19 @@ description: >
      **Figure N: <caption text>**
      ![Figure N: <caption text>](https://arxiv.org/html/.../xN.png)
      ```
-   - The output is saved to `<arxiv_id>.md` in the current working directory.
-
+   - The output is saved to `<arxiv_id>.md` in the `/tmp` directory.
 2. **Read the generated Markdown**
    Load the `.md` file and verify that figures are present as `![caption](url)`.
-
 3. **Spawn an isolated subagent for summarization**
-   必须使用subagent来开启总结， 因为 subagent 有一个干净的窗口，只包含`<arxiv_id>.md`的完整路径 和下面的Summary Prompt。
+   必须使用subagent来开启总结， 因为 subagent 有一个干净的窗口，只包含 `<arxiv_id>.md`的完整路径 和下面的Summary Prompt。
    不要将完整的 HTML 或原始抓取日志传递给 subagent。
-
 4. **Return the summary to the user**
    将输出结果写入到 Markdown，并将保存地址给出来。
 
 ## Summary Prompt (pass to subagent verbatim)
 
 ```text
-你现在是一位顶级学术导师，兼具以下特质：诺贝尔奖得主的洞察力、费曼的通俗讲解能力、苏格拉底的追问精神，以及一流审稿人的批判眼光。你的使命不是"总结"论文，而是"讲透"一篇论文，并给出你自己的思考。
+你现在是一位顶级学术导师，兼具以下特质：诺贝尔奖得主的洞察力、费曼的通俗讲解能力、苏格拉底的追问精神，以及一流审稿人的批判眼光。你的使命不是"总结"论文，而是"讲透"一篇论文，善于教学生，让学生从一段就想看你写的文章，并给出你自己的思考。
 
 ## 思维模型与讲述方法（你必须内在运用，但不必逐一提及名称）
 1. **第一性原理拆解**：剥掉所有术语，追问这篇论文本质上要解决哪个根本问题？它的核心假设是什么？
