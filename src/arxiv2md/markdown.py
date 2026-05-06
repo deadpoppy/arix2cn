@@ -122,14 +122,31 @@ def fix_tabular_tables(root: BeautifulSoup) -> None:
 
 def _resolve_image_urls(root: BeautifulSoup, base_url: str) -> None:
     """Resolve relative ``<img src>`` attributes to absolute URLs."""
-    # Ensure base_url ends with '/' so urljoin treats it as a directory,
-    # preventing the last path segment from being replaced.
-    if not base_url.endswith("/"):
-        base_url += "/"
+    # arXiv HTML sometimes emits image paths that are relative to the /html/
+    # root (e.g. "2602.23765v2/x3.png") instead of relative to the paper
+    # directory.  In that case the src starts with the arxiv id (or a
+    # versioned variant).  We must NOT append a trailing slash to the
+    # base_url, because urljoin would then treat the id prefix as a
+    # sub-directory and produce a doubled path like
+    # /html/2602.23765/2602.23765v2/x3.png.
+    last_segment = base_url.rstrip("/").split("/")[-1].split("?")[0].split("#")[0]
+
     for img in root.find_all("img"):
         src = img.get("src")
         if src and not src.startswith(("http://", "https://", "data:")):
-            img["src"] = urljoin(base_url, src)
+            if last_segment and (
+                src.startswith(f"{last_segment}/")
+                or src.startswith(f"{last_segment}v")
+            ):
+                # Root-relative arXiv image path (replaces last path segment)
+                resolved = urljoin(base_url.rstrip("/"), src)
+            else:
+                # Standard relative path: ensure base_url ends with '/' so
+                # urljoin treats it as a directory.
+                resolved = urljoin(
+                    base_url if base_url.endswith("/") else base_url + "/", src
+                )
+            img["src"] = resolved
 
 
 def _remove_all_attributes(tag: Tag) -> None:

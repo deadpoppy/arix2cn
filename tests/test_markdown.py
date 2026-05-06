@@ -206,3 +206,26 @@ def test_no_base_url_preserves_relative_paths() -> None:
 
     result = convert_fragment_to_markdown(html)
     assert "extracted/fig1.png" in result
+
+
+def test_resolve_arxiv_root_relative_image_urls() -> None:
+    """Test that arXiv-style root-relative image paths are resolved correctly.
+
+    Some arXiv HTML pages use image paths like ``2602.23765v2/x3.png`` which
+    are relative to the ``/html/`` root, not to the paper directory.  Without
+    special handling this would double the path segment (e.g.
+    ``/html/2602.23765/2602.23765v2/x3.png``).
+    """
+    html = '<figure><img src="2602.23765v2/x3.png" alt="Figure 3"/></figure>'
+
+    # Versionless base URL
+    result = convert_fragment_to_markdown(html, base_url="https://arxiv.org/html/2602.23765")
+    assert "https://arxiv.org/html/2602.23765v2/x3.png" in result
+
+    # Versioned base URL
+    result = convert_fragment_to_markdown(html, base_url="https://arxiv.org/html/2602.23765v2")
+    assert "https://arxiv.org/html/2602.23765v2/x3.png" in result
+
+    # Base URL with trailing slash
+    result = convert_fragment_to_markdown(html, base_url="https://arxiv.org/html/2602.23765/")
+    assert "https://arxiv.org/html/2602.23765v2/x3.png" in result

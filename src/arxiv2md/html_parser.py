@@ -29,6 +29,7 @@ class ParsedArxivHtml:
 
     title: str | None
     authors: list[str]
+    authors_block: str | None
     abstract: str | None
     sections: list[SectionNode]
 
@@ -40,10 +41,14 @@ def parse_arxiv_html(html: str) -> ParsedArxivHtml:
 
     title = _extract_title(soup)
     authors = _extract_authors(soup)
+    authors_block = _extract_authors_block(soup)
     abstract = _extract_abstract(soup)
     sections = _extract_sections(document_root)
 
-    return ParsedArxivHtml(title=title, authors=authors, abstract=abstract, sections=sections)
+    return ParsedArxivHtml(
+        title=title, authors=authors, authors_block=authors_block,
+        abstract=abstract, sections=sections,
+    )
 
 
 def _find_document_root(soup: BeautifulSoup) -> Tag:
@@ -88,16 +93,6 @@ def _extract_authors(soup: BeautifulSoup) -> list[str]:
         for text in _clean_author_text(node):
             if text and text not in authors:
                 authors.append(text)
-
-    # Also pull affiliation-like text (e.g. <em> inside ltx_authors) so that
-    # institutional info is preserved in the author list for downstream rendering.
-    for node in authors_container.find_all(
-        ["em", "span"], class_=re.compile(r"ltx_emph|ltx_font_italic|ltx_role_affiliation")
-    ):
-        text = node.get_text(" ", strip=True)
-        if text and text not in authors and len(text) > 2 and not _EMAIL_RE.match(text):
-            authors.append(text)
-
     return authors
 
 
@@ -140,6 +135,31 @@ def _clean_author_text(node: Tag) -> list[str]:
             continue
         cleaned.append(part)
     return cleaned
+
+
+def _extract_authors_block(soup: BeautifulSoup) -> str | None:
+    """Extract the raw text block between title and abstract (authors, affiliations, emails).
+
+    This preserves all metadata that appears in the ``ltx_authors`` container
+    without trying to distinguish authors from institutions.
+    """
+    authors_container = soup.find("div", class_="ltx_authors")
+    if not authors_container:
+        document_root = _find_document_root(soup)
+        authors_container = document_root.find("div", class_="ltx_authors")
+    if not authors_container:
+        return None
+
+    # Remove footnotes and author-notes to avoid contaminating the block with
+    # long contribution statements or citation instructions.
+    for note in authors_container.find_all(
+        class_=re.compile(r"ltx_note|ltx_role_footnote|ltx_author_notes")
+    ):
+        note.decompose()
+
+    text = authors_container.get_text(" ", strip=True)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text or None
 
 
 def _extract_abstract(soup: BeautifulSoup) -> str | None:

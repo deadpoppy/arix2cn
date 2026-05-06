@@ -40,6 +40,7 @@ def main() -> None:
     parser.add_argument(
         "-o",
         "--output",
+        default='/tmp',
         help="Output file path (default: <arxiv_id>.md in /tmp directory)",
     )
     parser.add_argument(
@@ -70,14 +71,14 @@ def main() -> None:
         remove_toc=not args.keep_toc,
         remove_inline_citations=True,
     )
-
+    safe_id = args.arxiv_id.replace("https://", "").replace("http://", "")
+    safe_id = safe_id.replace("arxiv.org/abs/", "").replace("arxiv.org/html/", "")
+    safe_id = safe_id.replace("/", "_")
     # Derive output path
     if args.output:
-        output_path = Path(args.output)
+        output_path = Path(args.output)// f"{safe_id}.md"
     else:
-        safe_id = args.arxiv_id.replace("https://", "").replace("http://", "")
-        safe_id = safe_id.replace("arxiv.org/abs/", "").replace("arxiv.org/html/", "")
-        safe_id = safe_id.replace("/", "_")
+
         output_path = Path("/tmp") / f"{safe_id}.md"
 
     output_path.write_text(result.content, encoding="utf-8")

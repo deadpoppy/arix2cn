@@ -21,6 +21,7 @@ def format_paper(
     version: str | None,
     title: str | None,
     authors: list[str],
+    authors_block: str | None = None,
     abstract: str | None,
     sections: list[SectionNode],
     include_toc: bool,
@@ -35,7 +36,7 @@ def format_paper(
     tree = "\n".join(tree_lines)
     content = _render_content(
         title=title,
-        authors=authors,
+        authors_block=authors_block,
         abstract=abstract,
         sections=sections,
         include_toc=include_toc,
@@ -115,7 +116,7 @@ def count_sections(sections: Iterable[SectionNode]) -> int:
 def _render_content(
     *,
     title: str | None,
-    authors: list[str],
+    authors_block: str | None,
     abstract: str | None,
     sections: list[SectionNode],
     include_toc: bool,
@@ -123,8 +124,8 @@ def _render_content(
     blocks: list[str] = []
     if title:
         blocks.append(f"# {title}")
-    if authors:
-        blocks.append(f"Authors: {', '.join(authors)}")
+    if authors_block:
+        blocks.append(authors_block)
     if include_toc:
         toc = _render_toc(sections)
         if toc:

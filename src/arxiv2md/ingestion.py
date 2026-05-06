@@ -100,6 +100,7 @@ async def ingest_paper(
         version=version,
         title=parsed.title,
         authors=parsed.authors,
+        authors_block=parsed.authors_block,
         abstract=parsed.abstract if include_abstract else None,
         sections=filtered_sections,
         include_toc=not remove_toc,
@@ -110,6 +111,7 @@ async def ingest_paper(
     metadata = {
         "title": parsed.title,
         "authors": parsed.authors,
+        "authors_block": parsed.authors_block,
         "abstract": parsed.abstract,
     }
 
