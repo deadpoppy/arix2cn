@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
@@ -71,6 +72,9 @@ async def ingest_paper(
     """
     html, source_url = await fetch_arxiv_html(html_url, arxiv_id=arxiv_id, version=version, use_cache=True, ar5iv_url=ar5iv_url)
 
+    # Use <base href> from the HTML if present (arXiv sets this for correct relative URL resolution)
+    image_base_url = _extract_base_href(html, source_url)
+
     # Pre-process: truncate references *before* parsing to keep context clean
     if remove_refs:
         html = _truncate_references_html(html)
@@ -89,7 +93,7 @@ async def ingest_paper(
         include_abstract = not sections or _ABSTRACT_TITLE in selected_lower
 
     for section in filtered_sections:
-        _populate_section_markdown(section, remove_inline_citations=remove_inline_citations, base_url=source_url)
+        _populate_section_markdown(section, remove_inline_citations=remove_inline_citations, base_url=image_base_url)
 
     result = format_paper(
         arxiv_id=arxiv_id,
@@ -117,3 +121,15 @@ def _populate_section_markdown(section, *, remove_inline_citations: bool = False
         section.markdown = convert_fragment_to_markdown(section.html, remove_inline_citations=remove_inline_citations, base_url=base_url)
     for child in section.children:
         _populate_section_markdown(child, remove_inline_citations=remove_inline_citations, base_url=base_url)
+
+
+def _extract_base_href(html: str, fallback_url: str) -> str:
+    """Extract the <base href> from HTML and resolve it against fallback_url.
+
+    arXiv HTML pages include a <base href='/html/<id>vN/'> that browsers use
+    to resolve relative image paths. We must honour it too.
+    """
+    match = re.search(r'<base[^>]+href=["\']([^"\']+)["\']', html, re.IGNORECASE)
+    if match:
+        return urljoin(fallback_url, match.group(1))
+    return fallback_url

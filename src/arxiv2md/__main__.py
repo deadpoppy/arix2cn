@@ -10,7 +10,7 @@ from pathlib import Path
 from arxiv2md.ingestion import ingest_paper
 from arxiv2md.query_parser import parse_arxiv_input
 
-DEFAULT_OUTPUT_FILE = "digest.txt"
+DEFAULT_OUTPUT_FILE = "/tmp/digest.txt"
 
 
 def main() -> None:
