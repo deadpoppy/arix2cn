@@ -76,9 +76,8 @@ def main() -> None:
     safe_id = safe_id.replace("/", "_")
     # Derive output path
     if args.output:
-        output_path = Path(args.output)// f"{safe_id}.md"
+        output_path = Path(args.output) / f"{safe_id}.md"
     else:
-
         output_path = Path("/tmp") / f"{safe_id}.md"
 
     output_path.write_text(result.content, encoding="utf-8")
