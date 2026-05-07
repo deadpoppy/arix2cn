@@ -18,9 +18,15 @@ except ImportError as exc:  # pragma: no cover - runtime dependency check
 
 _HEADING_RE = re.compile(r"^h[1-6]$")
 _EMAIL_RE = re.compile(r"^[\w.+-]+@[\w.-]+\.\w+$")
+_EMAIL_SEARCH_RE = re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
 # Keywords that indicate footnotes or contribution statements (case-insensitive check)
 _SKIP_KEYWORDS = {"footnotemark:", "equal contribution", "work performed", "listing order"}
 _MAX_AUTHOR_PART_LENGTH = 80  # Filter out long contribution statements
+_CONTACT_KEYWORDS = {
+    "university", "institute", "college", "department", "school",
+    "laboratory", "lab", "center", "centre", "inc.", "ltd.", "corp.",
+    "email", "e-mail", "mailto", "orcid", "address", "affiliation",
+}
 
 
 @dataclass
@@ -86,7 +92,9 @@ def _extract_authors(soup: BeautifulSoup) -> list[str]:
         and "ltx_font_bold" in tag.get("class", [])
     )
     if not author_nodes:
-        author_nodes = authors_container.find_all(class_=re.compile(r"ltx_author|ltx_personname"))
+        author_nodes = authors_container.find_all(
+            class_=re.compile(r"\bltx_author\b|\bltx_personname\b")
+        )
 
     authors: list[str] = []
     for node in author_nodes:
@@ -137,6 +145,26 @@ def _clean_author_text(node: Tag) -> list[str]:
     return cleaned
 
 
+def _is_contact_info(text: str) -> bool:
+    """Return True if *text* looks like an affiliation or email block."""
+    text_lower = text.lower()
+    if _EMAIL_SEARCH_RE.search(text):
+        return True
+    if any(kw in text_lower for kw in _CONTACT_KEYWORDS):
+        return True
+    return False
+
+
+def _is_contribution_statement(text: str) -> bool:
+    """Return True if *text* looks like an author-contribution footnote."""
+    text_lower = text.lower()
+    if any(marker in text_lower for marker in _SKIP_KEYWORDS):
+        return True
+    if len(text) > 120 and text.count(".") > 2:
+        return True
+    return False
+
+
 def _extract_authors_block(soup: BeautifulSoup) -> str | None:
     """Extract the raw text block between title and abstract (authors, affiliations, emails).
 
@@ -150,14 +178,65 @@ def _extract_authors_block(soup: BeautifulSoup) -> str | None:
     if not authors_container:
         return None
 
-    # Remove footnotes and author-notes to avoid contaminating the block with
-    # long contribution statements or citation instructions.
-    for note in authors_container.find_all(
-        class_=re.compile(r"ltx_note|ltx_role_footnote|ltx_author_notes")
-    ):
+    # Work on a clone so we don't mutate the original soup.
+    clone = BeautifulSoup(str(authors_container), "html.parser")
+
+    # Remove all <sup> tags (footnote markers like 1, *, †).
+    for sup in clone.find_all("sup"):
+        sup.decompose()
+
+    # Remove note / tag markers that are pure visual artifacts.
+    for tag in list(clone.find_all(class_=re.compile(r"ltx_tag|ltx_note_mark"))):
+        tag.decompose()
+
+    # Remove empty visual-separator spans.
+    for span in list(clone.find_all("span", class_="ltx_author_before")):
+        if not span.get_text(strip=True):
+            span.decompose()
+
+    # Process ``ltx_note`` / ``ltx_role_footnote``.
+    # In some papers these contain only a superscript mark (safe to drop);
+    # in others they wrap the full affiliation / email text (must keep).
+    for note in list(clone.find_all(class_=re.compile(r"ltx_note|ltx_role_footnote"))):
+        content = note.find(class_=re.compile(r"ltx_note_content"))
+        if content:
+            text = content.get_text(" ", strip=True)
+            text = re.sub(r"\s+", " ", text).strip()
+            if _is_contact_info(text):
+                note.replace_with(text)
+                continue
+            if _is_contribution_statement(text):
+                note.decompose()
+                continue
+        # No content or short -> treat as a footnote mark and remove.
         note.decompose()
 
-    text = authors_container.get_text(" ", strip=True)
+    # Process ``ltx_author_notes``.
+    # These are also dual-purpose: they may hold ``ltx_contact`` children
+    # (address / email) or long contribution paragraphs.
+    for author_notes in list(clone.find_all(class_="ltx_author_notes")):
+        has_contact = False
+        for child in list(author_notes.children):
+            if isinstance(child, Tag):
+                classes = " ".join(child.get("class", []))
+                if "ltx_contact" in classes:
+                    has_contact = True
+                else:
+                    child.decompose()
+            else:
+                # Remove stray text / NavigableString nodes
+                child.extract()
+        if has_contact:
+            continue
+        # No explicit contact children: decide from plain text.
+        text = author_notes.get_text(" ", strip=True)
+        text = re.sub(r"\s+", " ", text).strip()
+        if _is_contact_info(text):
+            continue
+        if _is_contribution_statement(text) or len(text) < 5:
+            author_notes.decompose()
+
+    text = clone.get_text(" ", strip=True)
     text = re.sub(r"\s+", " ", text).strip()
     return text or None
 
